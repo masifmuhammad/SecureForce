@@ -25,6 +25,9 @@ import { QueueModule } from './shared/queues/queue.module';
 import { ClientsModule } from './clients/clients.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { HealthController } from './health.controller';
+import { SeedService } from './seed.service';
+import { User } from './entities/user.entity';
+import { Location } from './entities/location.entity';
 
 @Module({
     imports: [
@@ -76,11 +79,16 @@ import { HealthController } from './health.controller';
 
         // Phase 4 — Analytics
         AnalyticsModule,
+
+        // Entity access for auto-seeding
+        TypeOrmModule.forFeature([User, Location]),
     ],
     controllers: [HealthController],
     providers: [
         // Apply rate limiting globally
         { provide: APP_GUARD, useClass: ThrottlerGuard },
+        // Auto-seed on first boot
+        SeedService,
     ],
 })
 export class AppModule { }

@@ -123,13 +123,23 @@ export default function Employees() {
     return (
         <div>
             <div className="page-header">
-                <h2>Employees</h2>
-                <p>Manage security staff and their details</p>
+                <div>
+                    <h2>Employees</h2>
+                    <p>Manage security staff and their details</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary" onClick={() => setShowInviteModal(true)} id="btn-invite-employee">
+                        <UserPlus size={16} /> Invite
+                    </button>
+                    <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-add-employee">
+                        <UserPlus size={16} /> Add Employee
+                    </button>
+                </div>
             </div>
 
-            {/* Actions bar */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            {/* Search */}
+            <div style={{ marginBottom: 20 }}>
+                <div style={{ position: 'relative', maxWidth: 400 }}>
                     <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--sf-text-muted)' }} />
                     <input
                         className="form-input"
@@ -140,16 +150,10 @@ export default function Employees() {
                         id="search-employees"
                     />
                 </div>
-                <button className="btn btn-secondary" onClick={() => setShowInviteModal(true)} id="btn-invite-employee">
-                    <UserPlus size={16} /> Invite Employee
-                </button>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-add-employee">
-                    <UserPlus size={16} /> Add Employee
-                </button>
             </div>
 
-            {/* Table */}
-            <div className="data-table-container">
+            {/* Desktop Table */}
+            <div className="data-table-container desktop-only">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -214,6 +218,71 @@ export default function Employees() {
                 )}
             </div>
 
+            {/* Mobile Cards */}
+            <div className="mobile-only">
+                {filtered.map((user) => (
+                    <div className="card" key={user.id} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                            <div style={{ flex: 1 }}>
+                                <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 4 }}>{user.firstName} {user.lastName}</h4>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--sf-text-muted)' }}>{user.email}</div>
+                            </div>
+                            <span className={`badge ${user.isActive ? 'badge-success' : 'badge-danger'}`}>
+                                {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                        <div style={{ background: 'var(--sf-bg-glass-light)', padding: '10px 12px', borderRadius: 'var(--sf-radius-sm)', marginBottom: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
+                                <span style={{ color: 'var(--sf-text-muted)' }}>Role</span>
+                                {isAdmin ? (
+                                    <select
+                                        className="form-input"
+                                        value={user.role}
+                                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                                        style={{ padding: '2px 6px', fontSize: '0.78rem', width: 'auto', minWidth: 90, height: 'auto' }}
+                                    >
+                                        <option value="employee">Employee</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                ) : (
+                                    <span className="badge badge-primary">{user.role}</span>
+                                )}
+                            </div>
+                            {user.phone && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
+                                    <span style={{ color: 'var(--sf-text-muted)' }}>Phone</span>
+                                    <span>{user.phone}</span>
+                                </div>
+                            )}
+                            {user.securityLicenseNumber && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                    <span style={{ color: 'var(--sf-text-muted)' }}>License</span>
+                                    <span style={{ fontFamily: 'monospace' }}>{user.securityLicenseNumber}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => openEdit(user)}>
+                                <Edit size={14} /> Edit
+                            </button>
+                            {user.isActive ? (
+                                <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleDeactivate(user.id)}>
+                                    Deactivate
+                                </button>
+                            ) : (
+                                <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => handleReactivate(user.id)}>
+                                    <RefreshCw size={14} /> Reactivate
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                {filtered.length === 0 && (
+                    <div className="empty-state"><h4>No employees found</h4></div>
+                )}
+            </div>
+
             {/* Pagination */}
             {total > 20 && (
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
@@ -232,7 +301,7 @@ export default function Employees() {
                             <button className="modal-close" onClick={() => setShowModal(false)}><X size={16} /></button>
                         </div>
                         <form onSubmit={handleAdd}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="modal-form-grid">
                                 <div className="form-group">
                                     <label className="form-label">First Name</label>
                                     <input className="form-input" required value={formData.firstName}
@@ -254,7 +323,7 @@ export default function Employees() {
                                 <input className="form-input" type="password" required minLength={8} value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="modal-form-grid">
                                 <div className="form-group">
                                     <label className="form-label">Phone</label>
                                     <input className="form-input" value={formData.phone}
@@ -378,7 +447,7 @@ export default function Employees() {
                             <button className="modal-close" onClick={() => setEditingUser(null)}><X size={16} /></button>
                         </div>
                         <form onSubmit={handleEdit}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="modal-form-grid">
                                 <div className="form-group">
                                     <label className="form-label">First Name</label>
                                     <input className="form-input" required value={editData.firstName}

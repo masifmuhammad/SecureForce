@@ -4,7 +4,7 @@
 import React, { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Shield, Mail, Lock, Key } from 'lucide-react';
+import { Shield, Mail, Lock, Key, AlertCircle } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -34,7 +34,22 @@ export default function Login() {
             // Clear the popup dismissal flag so it shows again on new login
             sessionStorage.removeItem('sf_shifts_popup_dismissed');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            const status = err.response?.status;
+            const msg = err.response?.data?.message;
+
+            if (status === 401) {
+                setError('Invalid email or password. Please double-check your credentials and try again.');
+            } else if (status === 403) {
+                setError(msg || 'Your account has been deactivated. Please contact your administrator.');
+            } else if (status === 429) {
+                setError('Too many login attempts. Please wait a few minutes before trying again.');
+            } else if (!err.response) {
+                setError('Unable to connect to the server. Please check your internet connection and try again.');
+            } else if (msg?.toLowerCase().includes('two-factor') || msg?.toLowerCase().includes('2fa')) {
+                setError('Invalid verification code. Please check your authenticator app and try again.');
+            } else {
+                setError(msg || 'Something went wrong. Please try again later.');
+            }
         } finally {
             setLoading(false);
         }
@@ -51,7 +66,12 @@ export default function Login() {
                 </div>
 
                 {/* Error Message */}
-                {error && <div className="login-error" id="login-error">{error}</div>}
+                {error && (
+                    <div className="login-error" id="login-error" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 16px', borderRadius: 'var(--sf-radius)', background: 'rgba(255, 69, 58, 0.08)', border: '1px solid rgba(255, 69, 58, 0.25)', color: 'var(--sf-red, #ff453a)', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: 16 }}>
+                        <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 {/* Login Form */}
                 <form onSubmit={handleSubmit}>

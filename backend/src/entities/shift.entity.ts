@@ -61,7 +61,7 @@ export class Shift {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    @VersionColumn()
+    @VersionColumn({ default: 1 })
     version: number;
 
     @Column({ type: 'timestamptz', nullable: true })

@@ -70,7 +70,7 @@ export class ShiftsService {
         });
     }
 
-    /** Guard accepts an open shift */
+    /** Guard accepts an open shift — uses optimistic locking for concurrency safety */
     async acceptShift(shiftId: string, userId: string) {
         const shift = await this.shiftsRepo.findOne({ where: { id: shiftId } });
         if (!shift) throw new NotFoundException('Shift not found');
@@ -79,9 +79,26 @@ export class ShiftsService {
         const user = await this.usersRepo.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
 
-        shift.userId = userId;
-        shift.isOpen = false;
-        return this.shiftsRepo.save(shift);
+        // Optimistic lock: update only if version matches (prevents race conditions)
+        const result = await this.shiftsRepo
+            .createQueryBuilder()
+            .update()
+            .set({
+                userId,
+                isOpen: false,
+                acceptedAt: new Date(),
+            })
+            .where('id = :id AND "isOpen" = true AND version = :version', {
+                id: shiftId,
+                version: shift.version,
+            })
+            .execute();
+
+        if (result.affected === 0) {
+            throw new BadRequestException('This shift was just taken by another guard. Please try a different shift.');
+        }
+
+        return this.shiftsRepo.findOne({ where: { id: shiftId }, relations: ['user', 'location'] });
     }
 
     /** Guard declines — currently a no-op, returns success */

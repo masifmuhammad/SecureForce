@@ -4,17 +4,19 @@
 import { useState, useEffect } from 'react';
 import {
     Shield, Users, Clock, AlertTriangle, MapPin, TrendingUp,
-    CheckCircle, Activity, ArrowUpRight
+    CheckCircle, Activity, ArrowUpRight, Briefcase, Check, X, Eye
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { analyticsApi, shiftsApi, reportsApi } from '../api/client';
-import type { AnalyticsDashboard } from '../types';
+import type { AnalyticsDashboard, Shift } from '../types';
 
 export default function Dashboard() {
-    const { user, isManager } = useAuth();
+    const { user, isManager, isAdmin } = useAuth();
     const [stats, setStats] = useState<AnalyticsDashboard | null>(null);
     const [upcomingShifts, setUpcomingShifts] = useState<any[]>([]);
+    const [watchedShifts, setWatchedShifts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
     useEffect(() => { load(); }, []);
 
@@ -26,8 +28,49 @@ export default function Dashboard() {
             ]);
             if (dashRes?.data) setStats(dashRes.data);
             setUpcomingShifts(Array.isArray(shiftsRes.data) ? shiftsRes.data.slice(0, 5) : []);
+
+            // Load watched shifts if user clicked "Watch Later"
+            if (localStorage.getItem('sf_watch_later_shifts') && !isAdmin) {
+                try {
+                    const { data } = await shiftsApi.getOpen();
+                    setWatchedShifts(Array.isArray(data) ? data : []);
+                } catch { /* silent */ }
+            }
         } catch { /* silent */ }
         setLoading(false);
+    };
+
+    const handleAcceptWatched = async (shiftId: string) => {
+        setAcceptingId(shiftId);
+        try {
+            await shiftsApi.accept(shiftId);
+            setWatchedShifts((prev) => prev.filter((s: any) => s.id !== shiftId));
+            // Reload upcoming shifts
+            const { data } = await shiftsApi.getUpcoming().catch(() => ({ data: [] }));
+            setUpcomingShifts(Array.isArray(data) ? data.slice(0, 5) : []);
+            // If no more watched shifts, clear the flag
+            if (watchedShifts.length <= 1) {
+                localStorage.removeItem('sf_watch_later_shifts');
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to accept shift — it may have been taken by someone else.');
+            // Remove the shift from watched list since it's taken
+            setWatchedShifts((prev) => prev.filter((s: any) => s.id !== shiftId));
+        } finally {
+            setAcceptingId(null);
+        }
+    };
+
+    const handleDismissWatched = (shiftId: string) => {
+        setWatchedShifts((prev) => prev.filter((s: any) => s.id !== shiftId));
+        if (watchedShifts.length <= 1) {
+            localStorage.removeItem('sf_watch_later_shifts');
+        }
+    };
+
+    const handleDismissAll = () => {
+        setWatchedShifts([]);
+        localStorage.removeItem('sf_watch_later_shifts');
     };
 
     const now = new Date();
@@ -102,6 +145,64 @@ export default function Dashboard() {
                     ))
                 )}
             </div>
+
+            {/* Watched Shifts — shown when user clicked "Watch Later" */}
+            {watchedShifts.length > 0 && (
+                <div className="card animate-in" style={{ marginBottom: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
+                            <Eye size={16} style={{ marginRight: 8, color: '#ff9f0a', verticalAlign: 'middle' }} />
+                            Watched Shifts
+                            <span className="badge badge-warning" style={{ marginLeft: 8 }}>{watchedShifts.length} open</span>
+                        </h3>
+                        <button className="btn btn-secondary btn-sm" onClick={handleDismissAll} style={{ fontSize: '0.78rem' }}>
+                            Dismiss All
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {watchedShifts.map((shift: any) => (
+                            <div key={shift.id} style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '12px 16px', borderRadius: 'var(--sf-radius)',
+                                background: 'rgba(255, 159, 10, 0.04)',
+                                border: '1px solid rgba(255, 159, 10, 0.12)',
+                                flexWrap: 'wrap', gap: 10,
+                            }}>
+                                <div style={{ flex: 1, minWidth: 180 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>
+                                        <MapPin size={14} style={{ color: '#ff9f0a' }} />
+                                        {shift.location?.name || 'Unknown Location'}
+                                    </div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--sf-text-secondary)' }}>
+                                        <Clock size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                        {new Date(shift.startTime).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        {' · '}
+                                        {new Date(shift.startTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                                        {' – '}
+                                        {new Date(shift.endTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => handleAcceptWatched(shift.id)}
+                                        disabled={acceptingId === shift.id}
+                                    >
+                                        <Check size={14} />
+                                        {acceptingId === shift.id ? 'Accepting...' : 'Accept'}
+                                    </button>
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => handleDismissWatched(shift.id)}
+                                    >
+                                        <X size={14} /> Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Main Grid */}
             <div className="dashboard-grid">

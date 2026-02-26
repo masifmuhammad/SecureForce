@@ -41,17 +41,21 @@ function ProtectedLayout() {
 
     if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-    // Show available shifts popup for non-managers (guards/employees)
-    // "Watch Later" (closing without action) shouldn't permanently hide it, 
-    // but we use session storage to avoid annoying them on every single refresh if they explicitly dismissed it.
-    const isGuard = true; // user && user.role !== 'admin' && user.role !== 'manager';
-    const shouldShowPopup = showShiftsPopup && isGuard && !sessionStorage.getItem('sf_shifts_popup_dismissed');
+    // Show available shifts popup only for guards (employees) and managers — NOT admins
+    const isGuardOrManager = user && (user.role === 'employee' || user.role === 'manager');
+    const shouldShowPopup = showShiftsPopup && isGuardOrManager && !sessionStorage.getItem('sf_shifts_popup_dismissed');
 
     const handleClosePopup = (permanently = false) => {
         setShowShiftsPopup(false);
         if (permanently) {
             sessionStorage.setItem('sf_shifts_popup_dismissed', 'true');
         }
+    };
+
+    const handleWatchLater = () => {
+        // Save that user wants to see shifts on dashboard
+        localStorage.setItem('sf_watch_later_shifts', 'true');
+        setShowShiftsPopup(false);
     };
 
     return (
@@ -76,8 +80,8 @@ function ProtectedLayout() {
             </main>
             <MobileNav onMenuOpen={() => setSidebarOpen(true)} />
 
-            {/* Available Shifts Popup — shown for guards */}
-            {shouldShowPopup && <AvailableShiftsPopup onClose={() => handleClosePopup(true)} onWatchLater={() => handleClosePopup(false)} />}
+            {/* Available Shifts Popup — shown for guards/managers only */}
+            {shouldShowPopup && <AvailableShiftsPopup onClose={() => handleClosePopup(true)} onWatchLater={handleWatchLater} />}
         </div>
     );
 }

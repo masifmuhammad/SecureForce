@@ -4,7 +4,7 @@
 // ============================================================
 import {
     Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-    UpdateDateColumn, ManyToOne, JoinColumn, Index,
+    UpdateDateColumn, ManyToOne, JoinColumn, Index, VersionColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Location } from './location.entity';
@@ -60,4 +60,10 @@ export class Shift {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @VersionColumn()
+    version: number;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    acceptedAt: Date;
 }

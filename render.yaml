@@ -1,0 +1,82 @@
+# ============================================================
+# Render Blueprint — SecureForce Deployment
+# Deploys: Backend (Docker), Frontend (Static), PostgreSQL, Redis
+# ============================================================
+
+databases:
+  - name: secureforce-db
+    plan: free
+    databaseName: secureforce
+    user: secureforce
+
+services:
+  # Redis
+  - type: redis
+    name: secureforce-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Only allow internal connections
+
+  # NestJS Backend API
+  - type: web
+    name: secureforce-api
+    plan: free
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: NODE_ENV
+        value: development
+      - key: PORT
+        value: 3001
+      - key: DB_HOST
+        fromDatabase:
+          name: secureforce-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: secureforce-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: secureforce-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: secureforce-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: secureforce-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: secureforce-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: secureforce-redis
+          type: redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 15m
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+      - key: FRONTEND_URL
+        value: https://secureforce.onrender.com
+
+  # React Frontend (Static Site)
+  - type: web
+    name: secureforce
+    plan: free
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile.render
+    dockerContext: ./frontend
+    envVars:
+      - key: VITE_API_URL
+        value: https://secureforce-api.onrender.com

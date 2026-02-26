@@ -1,0 +1,14 @@
+{
+  "name": "secureforce",
+  "version": "1.0.0",
+  "description": "SecureForce — Security Workforce Management Platform",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run start:dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down"
+  }
+}
